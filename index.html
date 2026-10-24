@@ -1,0 +1,1582 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive map of the Canyon UI launcher code: dependency graph, search, and source with snippets.">
+<title>Canyon UI Code Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+/* Layout: the app's layers drawn as canyon strata (screen at the top, system at the bottom);
+   below them, walk-throughs of how things flow, then every file in a filterable index. */
+:root {
+  --bg: #f3f5f4;
+  --panel: #ffffff;
+  --ink: #17201e;
+  --muted: #5b6965;
+  --line: #d6dedb;
+  --accent: #0f7a6c;
+  --accent-ink: #ffffff;
+  --warm: #c2571a;
+  --s1: #d9ece7; --s2: #e4e9f5; --s3: #efe7d8; --s4: #ece2ef; --s5: #e2efe0; --s6: #f1e3df; --s7: #e3e6e8;
+  --display: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1413; --panel: #171e1c; --ink: #e6eeeb; --muted: #95a6a1; --line: #2a3531;
+    --accent: #3cc3ad; --accent-ink: #06201b; --warm: #f08a4b;
+    --s1: #17302b; --s2: #1c2438; --s3: #2e2717; --s4: #2b1f30; --s5: #1d2e1b; --s6: #33201c; --s7: #222a2e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1413; --panel: #171e1c; --ink: #e6eeeb; --muted: #95a6a1; --line: #2a3531;
+  --accent: #3cc3ad; --accent-ink: #06201b; --warm: #f08a4b;
+  --s1: #17302b; --s2: #1c2438; --s3: #2e2717; --s4: #2b1f30; --s5: #1d2e1b; --s6: #33201c; --s7: #222a2e;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 40px 64px; display: grid; gap: 48px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+h3 { font-size: 16px; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+code, .mono { font-family: var(--mono); font-size: 0.86em; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+section { display: grid; gap: 16px; min-width: 0; }
+
+/* Header */
+header { display: grid; gap: 14px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.facts b { color: var(--ink); font-weight: 600; }
+
+/* Strata */
+.strata { display: grid; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.stratum {
+  display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 16px; align-items: start;
+  padding: 16px 18px; border: 0; border-top: 1px solid var(--line); text-align: left; font: inherit; color: inherit; cursor: pointer;
+}
+.stratum:first-child { border-top: 0; }
+.stratum:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.stratum[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.stratum h3 { display: flex; gap: 8px; align-items: center; }
+.chev { display: inline-block; transition: transform .15s; font-family: var(--mono); color: var(--muted); }
+.stratum .depth { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.stratum .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--mono); font-size: 12px; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--panel) 70%, transparent); border: 1px solid var(--line); }
+.detail { grid-column: 1 / -1; display: grid; gap: 10px; }
+.detail ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.detail li { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 12px; }
+.detail li code { word-break: break-word; }
+@media (max-width: 640px) {
+  .stratum { grid-template-columns: minmax(0, 1fr); }
+  .detail li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+
+/* Flows */
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { text-decoration: none; font: 600 14px var(--body); padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.tab:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.flow { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 0; counter-reset: step; }
+.steps li { counter-increment: step; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; padding: 10px 0; border-top: 1px dashed var(--line); }
+.steps li:first-child { border-top: 0; }
+.steps li::before { content: counter(step); font-family: var(--mono); font-weight: 600; color: var(--accent); width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--accent); display: grid; place-items: center; font-size: 13px; }
+.steps .where { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.diagram { overflow-x: auto; }
+pre.mermaid { margin: 0; background: transparent; }
+
+/* View tree */
+.tree { font-family: var(--mono); font-size: 13px; line-height: 1.7; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; overflow-x: auto; white-space: pre; }
+.tree .c { color: var(--muted); }
+.tree .k { color: var(--accent); font-weight: 600; }
+
+/* Index */
+.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.filters input { font: 15px var(--body); padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); min-width: 0; flex: 1 1 220px; }
+.filters input:focus-visible, .filters select:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.filters select { font: 15px var(--body); padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; }
+th, td { text-align: left; padding: 9px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-top: 0; }
+td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; color: var(--muted); }
+td.f code { font-weight: 600; }
+.layer-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; border: 1px solid var(--line); }
+.count { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+
+/* Glossary */
+dl { margin: 0; display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); gap: 10px 18px; }
+dt { font-family: var(--mono); font-weight: 600; font-size: 13.5px; }
+dd { margin: 0; }
+@media (max-width: 640px) { dl { grid-template-columns: minmax(0, 1fr); } dd { margin-bottom: 8px; } }
+@media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
+
+/* Graph */
+.graph-wrap { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+#graph { display: block; width: 100%; height: min(70vh, 620px); touch-action: none; cursor: grab; user-select: none; }
+#graph.panning { cursor: grabbing; }
+.graph-hint { position: absolute; left: 12px; bottom: 8px; margin: 0; font: 11.5px var(--mono); color: var(--muted); pointer-events: none; }
+.graph-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.graph-tools input { font: 15px var(--body); padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); flex: 1 1 240px; min-width: 0; }
+.graph-tools select { font: 15px var(--body); padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.graph-tools input:focus-visible, .graph-tools select:focus-visible, .zoom button:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.zoom { display: flex; gap: 6px; }
+.zoom button { font: 600 15px var(--body); min-width: 40px; height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+#graph .node.match circle { stroke: var(--accent); stroke-width: 3; }
+#graph .node.match text { font-weight: 600; }
+#graph .node.noted circle { stroke: var(--warm); stroke-width: 3; stroke-dasharray: 3 2; }
+.tagbar { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font: 12px var(--mono); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+.tag[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.tag:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.tag small { color: var(--muted); }
+.tag[aria-pressed="true"] small { color: inherit; }
+.results { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.results li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.results .why { font: 11.5px var(--mono); color: var(--muted); }
+.notes-box { display: grid; gap: 8px; border-top: 1px dashed var(--line); padding-top: 12px; }
+.notes-box textarea { font: 14px var(--body); min-height: 70px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); resize: vertical; width: 100%; }
+.notes-box textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.btn { font: 600 14px var(--body); padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; justify-self: start; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.sugg { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sugg li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; background: var(--bg); border-radius: 10px; padding: 8px 10px; }
+.sugg li span { white-space: pre-wrap; word-break: break-word; }
+.json { font: 12.5px var(--mono); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; overflow-x: auto; white-space: pre; margin: 0; max-height: 420px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#graph .band { opacity: 0.55; }
+#graph .band-label { font: 600 12px var(--mono); fill: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+#graph .edge { fill: none; stroke: var(--ink); stroke-opacity: 0.12; stroke-width: 1; }
+#graph .edge.out { stroke: var(--accent); stroke-opacity: 0.95; stroke-width: 2; }
+#graph .edge.in { stroke: var(--warm); stroke-opacity: 0.95; stroke-width: 2; }
+#graph .edge.dim { stroke-opacity: 0.04; }
+#graph .node { cursor: pointer; }
+#graph .node circle { stroke: var(--ink); stroke-width: 1.2; }
+#graph .node text { font: 10.5px var(--mono); fill: var(--ink); text-anchor: middle; }
+#graph .node.dim { opacity: 0.25; }
+#graph .node.sel circle { stroke: var(--accent); stroke-width: 3; }
+#graph .node:focus-visible circle { stroke: var(--accent); stroke-width: 3; }
+#graph .node:focus { outline: none; }
+.key { font: 600 12px var(--mono); padding: 1px 7px; border-radius: 999px; color: var(--accent-ink); }
+.key.out { background: var(--accent); }
+.key.in { background: var(--warm); }
+.graph-info { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; display: grid; gap: 10px; }
+.graph-info .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.graph-info ul { margin: 6px 0 0; padding-left: 18px; }
+.graph-info code { font-size: 12.5px; }
+
+/* Source screen */
+.src-btn { font: 600 14px var(--body); padding: 8px 14px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+.src-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.snips { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.snips button { width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 1px solid transparent; border-radius: 10px; padding: 6px 8px; cursor: pointer; display: grid; gap: 1px; }
+.snips button:hover, .snips button:focus-visible { border-color: var(--line); background: var(--bg); outline: none; }
+.snips .sym { font: 600 13px var(--mono); }
+.snips .sym .kind { color: var(--muted); font-weight: 400; }
+.snips .doc { font-size: 13px; color: var(--muted); }
+.snips .star { color: var(--warm); }
+.source-screen { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: grid; grid-template-rows: auto minmax(0, 1fr);
+  padding: env(safe-area-inset-top, 0px) max(0px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(0px, env(safe-area-inset-left, 0px)); }
+.source-screen[hidden] { display: none; }
+.src-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 12px max(16px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); background: var(--panel); }
+.src-head h2 { font-size: 17px; font-family: var(--mono); font-weight: 600; word-break: break-all; flex: 1 1 260px; min-width: 0; }
+.src-head .badge { font: 12px var(--mono); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.src-head .badge.live { color: var(--accent); border-color: var(--accent); }
+.src-head a, .src-head button { font: 600 14px var(--body); color: var(--ink); }
+.src-head button { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; }
+.src-head input { font: 14px var(--body); padding: 7px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); width: 160px; }
+.src-body { display: grid; grid-template-columns: minmax(0, 280px) minmax(0, 1fr); min-height: 0; }
+.src-side { border-right: 1px solid var(--line); overflow: auto; padding: 12px; display: grid; align-content: start; gap: 8px; background: var(--panel); }
+.src-code { overflow: auto; position: relative; }
+.src-code .lines { display: grid; grid-template-columns: auto minmax(0, 1fr); font: 12.5px/20px var(--mono); position: relative; min-width: max-content; }
+.src-code .gutter { padding: 12px 10px 40px 14px; text-align: right; color: var(--muted); user-select: none; border-right: 1px solid var(--line); white-space: pre; }
+.src-code pre { margin: 0; padding: 12px 18px 40px; white-space: pre; tab-size: 4; }
+.src-code .band { position: absolute; left: 0; right: 0; background: color-mix(in srgb, var(--accent) 14%, transparent); border-left: 3px solid var(--accent); pointer-events: none; }
+.src-code .status { padding: 24px; color: var(--muted); }
+@media (max-width: 760px) {
+  .src-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .src-side { border-right: 0; border-bottom: 1px solid var(--line); max-height: 32vh; }
+}
+/* Kotlin colours from the page's tokens */
+.hljs-keyword, .hljs-built_in, .hljs-literal { color: var(--accent); font-weight: 600; }
+.hljs-string, .hljs-char, .hljs-regexp { color: var(--warm); }
+.hljs-comment, .hljs-doctag, .hljs-quote { color: var(--muted); font-style: italic; }
+.hljs-number { color: var(--warm); }
+.hljs-title, .hljs-title.function_, .hljs-title.class_ { color: var(--ink); font-weight: 600; }
+.hljs-meta, .hljs-annotation { color: var(--muted); }
+.hljs-type, .hljs-params { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">io.github.jacomartins.canyonui · v1.0.4</span>
+    <h1>Canyon UI, layer by layer</h1>
+    <p>A map of the launcher's code for reading it yourself. The app is drawn here as rock strata: what you see on screen sits at the top, Android's own services lie at the bottom, and each layer only leans on the ones beneath it. Open a layer to see its files, follow a walk-through to watch a tap or a drag travel through them, or search the full file index.</p>
+    <div class="facts">
+      <span><b>67</b> Kotlin files</span>
+      <span><b>14,510</b> lines</span>
+      <span><b>8</b> unit-test files (pure logic)</span>
+      <span>Kotlin · Jetpack Compose + Android Views · Room · DataStore · Haze</span>
+    </div>
+  </header>
+
+  <section aria-labelledby="strata-h">
+    <span class="eyebrow">01 · The strata</span>
+    <h2 id="strata-h">Seven layers, top to bottom</h2>
+    <p class="muted">Each band is one kind of responsibility. Tap a band to see its files and what each one does.</p>
+    <div class="strata" id="strata"></div>
+  </section>
+
+  <section aria-labelledby="graph-h">
+    <span class="eyebrow">02 · Who uses whom</span>
+    <h2 id="graph-h">Dependency graph</h2>
+    <p>Every file is a dot, in its layer's row (screens at the top, Android services at the bottom). A line joins two files when one uses something the other declares: 237 links, read from the code. Search for a file or tap a dot to light up what it uses <span class="key out">uses</span> and what uses it <span class="key in">used by</span>; tap empty space to clear. Drag to move around, and zoom with the buttons, the mouse wheel or two fingers.</p>
+    <div class="graph-tools">
+      <label for="graph-q" hidden>Find a file in the graph</label>
+      <input id="graph-q" type="search" placeholder="Search files, tags or what they do (e.g. blur, drop, widgt)" autocomplete="off" list="graph-names">
+      <datalist id="graph-names"></datalist>
+      <label for="graph-layer" hidden>Show layer</label>
+      <select id="graph-layer"><option value="">All layers</option></select>
+      <div class="zoom" role="group" aria-label="Zoom">
+        <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+        <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+        <button type="button" id="zoom-fit">Fit</button>
+      </div>
+    </div>
+    <div class="tagbar" id="graph-tags" aria-label="Tags"></div>
+    <div class="graph-wrap"><svg id="graph" role="img" aria-label="Dependency graph of the launcher's files"></svg>
+      <p class="graph-hint">Drag to move · scroll or pinch to zoom · tap a file · hover to preview</p></div>
+    <div class="graph-info" id="graph-info" aria-live="polite">
+      <p class="muted">Tap a file in the graph. The most used files are AppRepository (15 files use it), DepthRing and Tokens (11 each), and WallpaperBackdrop and LayoutResolver (10 each).</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="notes-h">
+    <span class="eyebrow">Your notes</span>
+    <h2 id="notes-h">Picks and prompt suggestions</h2>
+    <p>Select a file in the graph to pick it or add suggestions to it, as many per file as you like. Everything is kept in this browser only and shown here as JSON: copy it and paste it to Claude as a prompt.</p>
+    <div class="row">
+      <button type="button" class="btn primary" id="copy-json">Copy JSON</button>
+      <button type="button" class="btn" id="clear-json">Clear all</button>
+      <span class="muted" id="json-status" aria-live="polite"></span>
+    </div>
+    <pre class="json" id="notes-json"></pre>
+  </section>
+
+  <section aria-labelledby="tree-h">
+    <span class="eyebrow">03 · On screen</span>
+    <h2 id="tree-h">What the home screen is made of</h2>
+    <p>Everything you see lives in one window. <code>HomeActivity</code> builds a single root view, <code>DragLayer</code>, and stacks the rest inside it, back to front. The home grid is made of classic Android Views (fast, precise for drag and drop); menus, panels and the Apps screen are Jetpack Compose, layered on top.</p>
+    <div class="tree" role="img" aria-label="View tree of the home screen"><span class="k">Window</span> <span class="c">(edge to edge, wallpaper shows behind)</span>
+└─ <span class="k">DragLayer</span> <span class="c">  ui/home/DragLayer.kt · takes drags, pinches, swipes</span>
+   ├─ <span class="k">HomeScreenLayout</span> <span class="c">  ui/home/HomeScreenLayout.kt</span>
+   │  ├─ <span class="k">Workspace</span> <span class="c">  horizontal pages, spring scrolling</span>
+   │  │  └─ <span class="k">CellLayout</span> × pages <span class="c">  the grid; places items by cell</span>
+   │  │     ├─ AppIconView <span class="c">  icon + label + badge, drawn by hand</span>
+   │  │     ├─ FolderIconView <span class="c">  normal or large (2x2) folder</span>
+   │  │     ├─ LauncherWidgetHostView <span class="c">  one app widget</span>
+   │  │     └─ WidgetStackView <span class="c">  swipeable stack / slideshow</span>
+   │  ├─ <span class="k">PageIndicatorView</span> <span class="c">  house + dots</span>
+   │  └─ <span class="k">Hotseat</span> (a CellLayout) <span class="c">  the dock</span>
+   ├─ <span class="k">ComposeView</span> → AppDrawer <span class="c">  the Apps screen, slides up</span>
+   ├─ <span class="k">ComposeView</span> → HomeOverlay <span class="c">  menus, folder panel, edit bars, picker, undo</span>
+   ├─ DragView <span class="c">  the image under your finger while dragging</span>
+   └─ ResizeFrame <span class="c">  handles around a widget being resized</span></div>
+  </section>
+
+  <section aria-labelledby="flows-h">
+    <span class="eyebrow">04 · Walk-throughs</span>
+    <h2 id="flows-h">How things travel through the layers</h2>
+    <nav class="tabs" aria-label="Walk-throughs"><a class="tab" href="#flow-start">From database to screen</a><a class="tab" href="#flow-drag">Life of a drag</a><a class="tab" href="#flow-glass">How glass is drawn</a><a class="tab" href="#flow-widget">Adding a widget</a></nav>
+    <div class="flow" id="flow-start">
+      <h3>From database to screen</h3>
+      <p>How the home screen appears and stays up to date. Nothing on home is drawn from memory alone: the database is the source of truth, and every change flows back through it.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart LR
+  DB[(Room pages, items)] --> HR[HomeRepository compute]
+  AR[AppRepository installed apps] --> HR
+  SS[SettingsStore grid, mode] --> HR
+  HR --> LR[LayoutResolver keeps grid valid]
+  LR --> HS[[HomeState StateFlow]]
+  HS --> HA[HomeActivity.bind]
+  HA --> V[Views on the pages]
+</pre></div>
+      <ol class="steps"><li><div><div>LauncherApp starts once per process and creates the two layout databases, settings and the app list.</div><div class="where">LauncherApp.kt</div></div></li><li><div><div>HomeRepository combines the database tables, the installed apps and the settings into one flow.</div><div class="where">data/HomeRepository.kt · compute()</div></div></li><li><div><div>LayoutResolver places every item: drops apps that were uninstalled, re-places items that no longer fit the grid.</div><div class="where">model/LayoutResolver.kt</div></div></li><li><div><div>The result is a HomeState: a list of entries (apps, folders, widgets, stacks), each with its page and cells.</div><div class="where">HomeState, HomeEntry</div></div></li><li><div><div>HomeActivity collects that state and binds it: it reuses each item's view by id, moves it to its cell, and removes views of items that are gone.</div><div class="where">HomeActivity.kt · bind()</div></div></li></ol>
+    </div>
+    <div class="flow" id="flow-drag">
+      <h3>Life of a drag</h3>
+      <p>Long-press an app, move it, let go. The drag is handled entirely in Views, then saved through the repository, then the screen updates from the new state.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart LR
+  LP[Long-press AppIconView] --> ARM[DragController.arm]
+  ARM --> DL[DragLayer finger moves]
+  DL --> UP[DragController.update]
+  UP --> DEC[DropLogic.decide]
+  DEC -->|hint| CL[CellLayout drop hint]
+  DL -->|let go| FIN[finish → DropResult]
+  FIN --> OD[HomeActivity.onDropped]
+  OD --> REP[HomeRepository.place one transaction]
+  REP --> DB[(Room)] --> ST[[HomeState]] --> BIND[bind]
+</pre></div>
+      <ol class="steps"><li><div><div>A long-press shows the item's menu and arms a drag with a snapshot image of the item.</div><div class="where">HomeActivity · onItemLongPress → drag.arm</div></div></li><li><div><div>Once the finger moves, DragLayer starts the drag: the item hides, a DragView follows the finger.</div><div class="where">ui/home/DragLayer.kt · DragController.begin</div></div></li><li><div><div>On every move, the controller finds the cell under the finger and asks DropLogic what a drop there would do: move, push aside, swap, make a folder, join a stack.</div><div class="where">ui/home/DragController.kt · model/DropLogic.kt</div></div></li><li><div><div>Holding at a screen edge flips the page; dragging from an open folder reorders inside it until the finger rests outside.</div><div class="where">DragController · pageFlip, leave</div></div></li><li><div><div>On release the result goes to the activity, which moves the views at once (so nothing flashes) and asks the repository to save.</div><div class="where">HomeActivity · onDropped, optimisticMove</div></div></li><li><div><div>The repository writes in one database transaction and keeps an undo snapshot; the new HomeState rebinds the screen while the drag image flies into the item's new spot.</div><div class="where">HomeRepository.place · DragController.finish</div></div></li></ol>
+    </div>
+    <div class="flow" id="flow-glass">
+      <h3>How glass is drawn</h3>
+      <p>Android does not let ordinary apps read the wallpaper, so Canyon UI keeps its own copy of the photo it sets, blurs it, and draws it behind see-through surfaces lined up with the real wallpaper.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart LR
+  WA[WallpaperActivity pick photo] --> SP[WallpaperBackdrop setFromPhoto]
+  SP --> WM[WallpaperManager setBitmap]
+  SP --> CP[copy on disk + in memory]
+  CP --> BL[blur per mode]
+  BL --> AC[[active StateFlow]]
+  AC --> GS[GlassShader views, Android 13+]
+  AC --> CPU[plain blur views, fallback]
+  CP --> SRC[BackdropSource Haze source]
+  SRC --> HZ[Haze glass / blur Compose panels]
+</pre></div>
+      <ol class="steps"><li><div><div>The chooser hands a photo to WallpaperBackdrop, which crops it to the screen, sets it as the wallpaper and keeps the image.</div><div class="where">WallpaperActivity.kt · ui/design/WallpaperBackdrop.kt</div></div></li><li><div><div>It shrinks and box-blurs a copy for the current mode: half resolution for glass, much smaller for frosted.</div><div class="where">WallpaperBackdrop.blur()</div></div></li><li><div><div>View surfaces (folders, edit pages, widget cards, stacks) draw that copy behind themselves at their exact screen position, and redraw when they move.</div><div class="where">WallpaperBackdrop.draw() · track()</div></div></li><li><div><div>In glass mode on Android 13+, the copy goes through an AGSL lens shader that bends it at the rim.</div><div class="where">ui/design/GlassShader.kt</div></div></li><li><div><div>Compose panels use Haze instead: an invisible full-size copy of the wallpaper is the source, and each panel applies Haze's glass or blur over it.</div><div class="where">ui/design/Backdrop.kt · BackdropSource, backdrop()</div></div></li><li><div><div>If the wallpaper is changed elsewhere, the copy no longer matches, so it is dropped and surfaces fall back to translucent.</div><div class="where">WallpaperBackdrop.listen() · check()</div></div></li></ol>
+    </div>
+    <div class="flow" id="flow-widget">
+      <h3>Adding a widget</h3>
+      <p>Widgets belong to other apps. The launcher only hosts them, so adding one is a short negotiation with Android and the widget's app.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart LR
+  PK[WidgetPicker] --> SA[HomeWidgets.startAdd]
+  SA --> ID[allocate id]
+  ID --> BIND{allowed to bind?}
+  BIND -->|no| ASK[ask the user]
+  BIND -->|yes| CFG
+  ASK --> CFG{setup screen?}
+  CFG -->|yes| RUN[run widget setup]
+  CFG -->|no| ADD
+  RUN --> ADD[HomeRepository.addWidget]
+  ADD --> VIEW[LauncherWidgetHostView + WidgetFrame]
+</pre></div>
+      <ol class="steps"><li><div><div>The picker lists every widget with a preview (image, layout or Android 15's generated preview) at its starting size.</div><div class="where">ui/overlay/WidgetPicker.kt · ui/widget/WidgetCatalog.kt</div></div></li><li><div><div>Choosing one allocates a widget id from the host and asks Android to bind it; the first time, Android asks you to allow it.</div><div class="where">HomeWidgets.startAdd</div></div></li><li><div><div>If the widget has a setup screen, it runs; cancelling releases the id again.</div><div class="where">HomeWidgets</div></div></li><li><div><div>The repository saves the widget in its cells, and bind creates its host view with the rounded frame and border.</div><div class="where">HomeRepository.addWidget · ui/widget/WidgetFrame.kt</div></div></li><li><div><div>The widget is told its size (and dark mode) so it can pick a matching layout; one-row widgets get the whole cell's size.</div><div class="where">ui/widget/WidgetSizes.kt · applySize</div></div></li></ol>
+    </div>
+  </section>
+
+  <section aria-labelledby="index-h">
+    <span class="eyebrow">05 · File index</span>
+    <h2 id="index-h">Every file</h2>
+    <div class="filters">
+      <label class="muted" for="q" hidden>Search files</label>
+      <input id="q" type="search" placeholder="Search files, tags or what they do (typos are fine), or #tag">
+      <label for="layer-filter" class="muted" hidden>Layer</label>
+      <select id="layer-filter"><option value="">All layers</option></select>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>Layer</th><th style="text-align:right">Lines</th><th>What it does</th><th>Tags</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="gloss-h">
+    <span class="eyebrow">06 · Words you'll meet</span>
+    <h2 id="gloss-h">Glossary</h2>
+    <dl id="gloss"></dl>
+  </section>
+
+  <section aria-labelledby="read-h">
+    <span class="eyebrow">07 · Where to start reading</span>
+    <h2 id="read-h">A reading order</h2>
+    <ol class="steps" id="reading"></ol>
+  </section>
+</div>
+
+<div class="source-screen" id="source-screen" hidden role="dialog" aria-modal="true" aria-labelledby="src-title">
+  <div class="src-head">
+    <button type="button" id="src-close" aria-label="Close the source">← Back</button>
+    <h2 id="src-title"></h2>
+    <span class="badge" id="src-badge"></span>
+    <label for="src-find" hidden>Find in file</label>
+    <input id="src-find" type="search" placeholder="Find in file">
+    <button type="button" id="src-switch"></button>
+    <a id="src-gh" href="#" target="_blank" rel="noopener">Open on GitHub ↗</a>
+  </div>
+  <div class="src-body">
+    <aside class="src-side"><span class="eyebrow">Snippets</span><ul class="snips" id="src-snips"></ul></aside>
+    <div class="src-code" id="src-code"></div>
+  </div>
+</div>
+
+<script>
+const LAYERS = [
+  { id: "act", name: "Screens", depth: "Surface", color: "var(--s1)",
+    blurb: "The three Android Activities. They build the screen, listen to the data, and route every user action to the right place." },
+  { id: "compose", name: "Compose UI", depth: "Upper layer", color: "var(--s2)",
+    blurb: "Everything drawn with Jetpack Compose: menus, the folder panel, the Apps screen, pickers, settings, and the design system (buttons, borders, sections)." },
+  { id: "views", name: "Home views", depth: "Middle layer", color: "var(--s3)",
+    blurb: "The home grid as hand-drawn Android Views: pages, cells, icons, folders, widgets, and the drag-and-drop machinery." },
+  { id: "fx", name: "Effects", depth: "Middle layer", color: "var(--s4)",
+    blurb: "Glass, frost and borders: the wallpaper copy and its blur, the AGSL lens shader, Haze for Compose panels, and the OneDepth border." },
+  { id: "data", name: "Data and state", depth: "Lower layer", color: "var(--s5)",
+    blurb: "Where things are remembered: the layout database (Room), settings (DataStore), installed apps and their icons, usage counts, backups." },
+  { id: "model", name: "Pure logic", depth: "Bedrock", color: "var(--s6)",
+    blurb: "Plain Kotlin with no Android in it: where a drop lands, how the grid fills, categories, search, folder order. This is what the unit tests cover." },
+  { id: "sys", name: "Android services", depth: "Below the app", color: "var(--s7)",
+    blurb: "Hooks into the phone: notification counts for badges and the accessibility service for lock and notifications gestures." },
+];
+
+const FILES = [
+  // Screens
+  ["HomeActivity.kt", "act", 1755, "The home screen itself. Builds the view tree, binds HomeState to views, handles taps, long-presses, drops, edit mode, folders, widgets, wallpaper colours, unlock and return animations, gestures and badges."],
+  ["SettingsActivity.kt", "act", 585, "Home screen settings: layout mode, grid, icons, widgets, wallpaper app, badges, gestures, transparency, backup."],
+  ["WallpaperActivity.kt", "act", 520, "Canyon UI's wallpaper chooser: photos, folders, Add from…, live wallpapers; sets the photo and goes home."],
+  ["LauncherApp.kt", "act", 106, "The Application: creates the databases and repositories once, and wires settings to icons, blur mode and folder ordering."],
+  ["HomeWidgets.kt", "act", 309, "Widget host and the add flow: allocate an id, ask permission to bind, run the widget's setup, then place it."],
+  ["BuildConfigInfo.kt", "act", 21, "Reads the installed version name."],
+  ["home/HomePageView.kt", "act", 33, "Stage 0 root that tracked safe-area insets (kept small)."],
+  // Compose UI
+  ["ui/overlay/HomeOverlay.kt", "compose", 641, "The Compose layer over home: edit bars, folder panel, menus, delete and categorize dialogs, undo bar, open/close animations."],
+  ["ui/overlay/OverlayState.kt", "compose", 83, "What the overlay shows (Compose state) and the actions it asks the activity to do."],
+  ["ui/overlay/WidgetPicker.kt", "compose", 342, "The widget picker: apps' widgets with previews (image, layout or Android 15 generated preview)."],
+  ["ui/overlay/EditAppSheet.kt", "compose", 368, "Edit icon: name, icon from a pack or a photo, and category."],
+  ["ui/drawer/AppDrawer.kt", "compose", 438, "The Apps screen: grid, header, search field, background by transparency mode."],
+  ["ui/drawer/AlphabetScrubber.kt", "compose", 171, "The letter dots at the side of the Apps screen, with the letter bubble."],
+  ["ui/drawer/DrawerModel.kt", "compose", 67, "The Apps screen's state: query, results, hidden apps, slide offset."],
+  ["ui/settings/AppTargetPicker.kt", "compose", 230, "Choose an app for swipe up or the wallpaper button, or type a package name; opens it."],
+  ["ui/settings/IconPackPicker.kt", "compose", 137, "Icon pack chooser with previews of your own apps."],
+  ["ui/design/Buttons.kt", "compose", 135, "The one button component: Primary (blue) or Secondary (grey) pills and round icon buttons."],
+  ["ui/design/Menu.kt", "compose", 104, "The long-press menu used everywhere."],
+  ["ui/design/Section.kt", "compose", 54, "Section header and the settings-style section container."],
+  ["ui/design/ColorPicker.kt", "compose", 165, "Folder colour picker with transparency."],
+  ["ui/design/Tokens.kt", "compose", 76, "Spacing scale and typography on the phone's own font, at real weights."],
+  ["ui/theme/Theme.kt", "compose", 113, "Canyon UI's colours (neutral greys, blue primary) or the phone's palette."],
+  // Home views
+  ["ui/home/DragLayer.kt", "views", 261, "Root view: arms and runs drags, pinch to edit mode, swipe up for the Apps screen, swipe down for notifications."],
+  ["ui/home/DragController.kt", "views", 395, "One drag from pick-up to drop: follows the finger, asks DropLogic where it would land, flips pages, reorders inside folders, flies the image home."],
+  ["ui/home/Workspace.kt", "views", 253, "The horizontal pages with spring scrolling and page snapping."],
+  ["ui/home/CellLayout.kt", "views", 220, "One page's grid: lays children out by cell, draws drop hints and the edit-mode page card."],
+  ["ui/home/HomeScreenLayout.kt", "views", 183, "Pages, dot indicator, dock and hint, arranged for the screen."],
+  ["ui/home/AppIconView.kt", "views", 147, "One app: icon, label and badge drawn directly, with press scale and brightening."],
+  ["ui/home/FolderIconView.kt", "views", 353, "Folders: normal (preview) or large (tappable apps, stacked last cell), with glass and badges."],
+  ["ui/home/PageIndicatorView.kt", "views", 101, "House and dots that fade with the scroll position."],
+  ["ui/home/DrawerController.kt", "views", 141, "Slides the Apps screen up and down with a spring, and fades home behind it."],
+  ["ui/home/BadgePainter.kt", "views", 49, "Draws a notification badge (dot or count) at an icon's corner."],
+  ["ui/home/ViewMap.kt", "views", 49, "Maps points between the root and a nested view through scroll and scale."],
+  ["ui/widget/WidgetHost.kt", "views", 209, "Widget host view with crash protection, long-press handling and the blur behind its card."],
+  ["ui/widget/WidgetFrame.kt", "views", 260, "Rounded or pill shape for widgets, finds the card they actually draw, adds the border."],
+  ["ui/widget/WidgetSizes.kt", "views", 123, "Converts provider sizes to cells and tells widgets their size (pills, full cell, dark mode)."],
+  ["ui/widget/WidgetStackView.kt", "views", 314, "A stack of widgets: swipe between them, dots, slideshow on the clock."],
+  ["ui/widget/ResizeFrame.kt", "views", 187, "Handles to resize a widget cell by cell."],
+  ["ui/widget/WidgetCatalog.kt", "views", 102, "Lists installed widgets for the picker, with their previews."],
+  ["util/Motion.kt", "views", 26, "Animation durations and whether motion is turned on."],
+  ["ui/home/EditBackdropView.kt", "views", 58, "Edit mode's full-screen background: the Transparency effect behind clear pages, fading in and out."],
+  // Effects
+  ["ui/design/WallpaperBackdrop.kt", "fx", 358, "The launcher's wallpaper copy: sets a photo, keeps it, blurs it per mode, and draws it behind views."],
+  ["ui/design/GlassShader.kt", "fx", 140, "The liquid glass lens for views: an AGSL shader that bends the blurred wallpaper at the rim."],
+  ["ui/design/Backdrop.kt", "fx", 148, "Glass and frost for Compose: Haze source (the wallpaper copy) and the backdrop modifier."],
+  ["ui/design/DepthRing.kt", "fx", 153, "OneDepthBorder: the single border of the interface, as a Compose modifier."],
+  ["ui/design/DepthRingPainter.kt", "fx", 114, "The same border for Views (folders, widgets, edit pages)."],
+  // Data
+  ["data/HomeRepository.kt", "data", 923, "The layout: computes HomeState from the database, apps and settings, and makes every edit (in one transaction, undoable)."],
+  ["data/LauncherDatabase.kt", "data", 193, "Room database: pages and items tables, migrations, queries."],
+  ["data/SettingsStore.kt", "data", 368, "Every setting, in DataStore, as one LauncherSettings flow."],
+  ["data/AppRepository.kt", "data", 198, "Installed apps (all profiles) with labels and rendered icons; refreshes on installs."],
+  ["data/IconCache.kt", "data", 397, "Renders icons: your override, icon pack, dynamic clock, or the app's own in the chosen shape."],
+  ["data/IconPack.kt", "data", 226, "Loads icon packs (appfilter.xml) and their drawables."],
+  ["data/IconStyle.kt", "data", 82, "Icon shapes (system, circle, squircle, rounded, square) as paths."],
+  ["data/AppUsage.kt", "data", 74, "Launch counts per app per day (on the phone only), for category folder order."],
+  ["data/Backup.kt", "data", 99, "Backs up and restores both layouts, settings and usage as one zip."],
+  ["data/DefaultApps.kt", "data", 62, "Finds phone, messages, browser and camera for the first-run layout."],
+  ["data/CategoryTitles.kt", "data", 23, "Category names as text resources."],
+  // Model
+  ["model/LayoutResolver.kt", "model", 324, "Turns stored items into placed items: keeps the grid valid, re-places what no longer fits."],
+  ["model/DropLogic.kt", "model", 151, "Where a dropped item goes: move, push aside, swap, folder, stack, or nowhere."],
+  ["model/GridOccupancy.kt", "model", 81, "Which cells are taken; finds the nearest free spot."],
+  ["model/AppCategories.kt", "model", 230, "Sorts apps into categories offline (known apps, declared category, name words)."],
+  ["model/CategoryOrder.kt", "model", 52, "Order inside category folders: alphabetical, then most used, changing only after five days."],
+  ["model/AppSearch.kt", "model", 67, "Accent-free sorting and search of app names."],
+  ["model/AppFilter.kt", "model", 55, "Parses icon pack appfilter entries."],
+  ["model/DefaultLayoutPlanner.kt", "model", 32, "Plans the first-run dock and first row."],
+  // System
+  ["badges/Badges.kt", "sys", 80, "Notification listener that keeps only per-app counts for badges."],
+  ["gesture/LauncherAccessibilityService.kt", "sys", 54, "Accessibility service that only locks the phone and opens notifications."],
+];
+
+
+const GLOSSARY = [
+  ["Workspace", "The row of home pages you swipe between."],
+  ["CellLayout", "One page's grid. The dock (Hotseat) is a CellLayout with one row."],
+  ["Container", "Where an item lives: DESKTOP (a page), DOCK, or FOLDER."],
+  ["AppKey", "Package + activity + user profile: how an app is identified everywhere."],
+  ["PlacedItem", "An item with its container, page, cell and span, after the layout is resolved."],
+  ["HomeState", "Everything on home at one moment: pages, grid size and every entry. Views are rebuilt from it."],
+  ["Entry", "One thing on home: AppEntry, FolderEntry, WidgetEntry or StackEntry."],
+  ["Span", "How many cells an item covers (spanX × spanY)."],
+  ["Large folder", "A 2x2 folder whose apps can be tapped directly."],
+  ["Category folder", "A folder kept by \"Organize apps by category\"; new apps of its category join it."],
+  ["Pill", "A one-row (or one-column) widget, drawn fully rounded and capped in thickness."],
+  ["Stack", "Widgets of the same size in one spot, swiped through; a slideshow turns on the clock."],
+  ["OneDepthBorder", "The single border style: lit from the top, faint dark sides."],
+  ["Wallpaper copy", "The photo Canyon UI set as wallpaper, kept to blur (apps cannot read the wallpaper)."],
+  ["Haze", "A Compose library (dev.chrisbanes.haze) for blur and glass over content."],
+  ["Overlay", "The Compose layer above the home grid: menus, folder panel, edit bars, dialogs."],
+];
+
+const READING = [
+  ["LauncherApp.kt: what exists once per process and how it is wired.", "LauncherApp.kt"],
+  ["model/LayoutResolver.kt and model/DropLogic.kt: the rules, in plain Kotlin, with their tests next to them.", "app/src/test/.../model"],
+  ["data/HomeRepository.kt: compute() first, then one edit such as place() or createFolder().", "data/HomeRepository.kt"],
+  ["HomeActivity.kt: onCreate (the view tree), then bind(), then onDropped().", "HomeActivity.kt"],
+  ["ui/home/DragController.kt: begin, update, drop, finish.", "ui/home/DragController.kt"],
+  ["ui/overlay/HomeOverlay.kt: how Compose sits on top and talks back through OverlayActions.", "ui/overlay"],
+  ["ui/design/WallpaperBackdrop.kt and GlassShader.kt: the glass pipeline.", "ui/design"],
+];
+
+const layerById = Object.fromEntries(LAYERS.map(l => [l.id, l]));
+
+// Strata
+const strata = document.getElementById("strata");
+LAYERS.forEach((l, i) => {
+  const files = FILES.filter(f => f[1] === l.id);
+  const lines = files.reduce((a, f) => a + f[2], 0);
+  const btn = document.createElement("button");
+  btn.className = "stratum";
+  btn.style.background = l.color;
+  btn.setAttribute("aria-expanded", i === 0 ? "true" : "false");
+  btn.id = "layer-" + l.id;
+  btn.innerHTML = `
+    <div><h3><span class="chev" aria-hidden="true">›</span>${l.name}</h3>
+      <div class="depth">${l.depth} · ${files.length} files · ${lines.toLocaleString()} lines</div></div>
+    <div style="display:grid;gap:8px;min-width:0"><p>${l.blurb}</p>
+      <div class="chips">${files.slice(0, 6).map(f => `<span class="chip">${f[0].split("/").pop()}</span>`).join("")}${files.length > 6 ? `<span class="chip">+${files.length - 6}</span>` : ""}</div></div>
+    <div class="detail" ${i === 0 ? "" : "hidden"}><ul>${files.map(f => `<li><code>${f[0]}</code><span>${f[3]}</span></li>`).join("")}</ul></div>`;
+  btn.addEventListener("click", () => {
+    const open = btn.getAttribute("aria-expanded") === "true";
+    btn.setAttribute("aria-expanded", open ? "false" : "true");
+    btn.querySelector(".detail").hidden = open;
+  });
+  strata.appendChild(btn);
+});
+
+
+const TAGS = {
+"HomeActivity.kt": [
+"home",
+"binding",
+"drag",
+"folders",
+"widgets",
+"edit-mode",
+"animation",
+"gestures",
+"badges",
+"wallpaper",
+"menus"
+],
+"SettingsActivity.kt": [
+"settings",
+"compose",
+"layout",
+"icons",
+"widgets",
+"badges",
+"gestures",
+"transparency",
+"backup"
+],
+"WallpaperActivity.kt": [
+"wallpaper",
+"photos",
+"gallery",
+"live-wallpaper",
+"compose"
+],
+"LauncherApp.kt": [
+"startup",
+"wiring",
+"storage",
+"icons",
+"transparency",
+"categories"
+],
+"HomeWidgets.kt": [
+"widgets",
+"binding",
+"add-widget"
+],
+"BuildConfigInfo.kt": [
+"version"
+],
+"home/HomePageView.kt": [
+"insets",
+"layout"
+],
+"ui/overlay/HomeOverlay.kt": [
+"compose",
+"folders",
+"menus",
+"edit-mode",
+"animation",
+"dialogs",
+"undo",
+"glass"
+],
+"ui/overlay/OverlayState.kt": [
+"compose",
+"state",
+"edit-mode",
+"folders"
+],
+"ui/overlay/WidgetPicker.kt": [
+"widgets",
+"compose",
+"previews",
+"add-widget"
+],
+"ui/overlay/EditAppSheet.kt": [
+"icons",
+"compose",
+"categories",
+"edit-icon"
+],
+"ui/drawer/AppDrawer.kt": [
+"apps-screen",
+"compose",
+"search",
+"glass"
+],
+"ui/drawer/AlphabetScrubber.kt": [
+"apps-screen",
+"compose",
+"search",
+"scrolling"
+],
+"ui/drawer/DrawerModel.kt": [
+"apps-screen",
+"state",
+"search"
+],
+"ui/settings/AppTargetPicker.kt": [
+"settings",
+"swipe-up",
+"wallpaper",
+"package",
+"compose"
+],
+"ui/settings/IconPackPicker.kt": [
+"icons",
+"icon-pack",
+"settings",
+"compose"
+],
+"ui/design/Buttons.kt": [
+"design-system",
+"buttons",
+"compose"
+],
+"ui/design/Menu.kt": [
+"design-system",
+"menus",
+"compose",
+"glass"
+],
+"ui/design/Section.kt": [
+"design-system",
+"settings",
+"compose"
+],
+"ui/design/ColorPicker.kt": [
+"design-system",
+"folders",
+"colours",
+"compose"
+],
+"ui/design/Tokens.kt": [
+"design-system",
+"typography",
+"spacing"
+],
+"ui/theme/Theme.kt": [
+"design-system",
+"colours",
+"dark-mode"
+],
+"ui/home/DragLayer.kt": [
+"drag",
+"touch",
+"gestures",
+"pinch",
+"apps-screen"
+],
+"ui/home/DragController.kt": [
+"drag",
+"folders",
+"animation",
+"pages"
+],
+"ui/home/Workspace.kt": [
+"pages",
+"scrolling",
+"touch"
+],
+"ui/home/CellLayout.kt": [
+"grid",
+"layout",
+"edit-mode",
+"glass"
+],
+"ui/home/HomeScreenLayout.kt": [
+"layout",
+"pages",
+"dock"
+],
+"ui/home/AppIconView.kt": [
+"icons",
+"badges",
+"animation"
+],
+"ui/home/FolderIconView.kt": [
+"folders",
+"glass",
+"badges",
+"icons"
+],
+"ui/home/PageIndicatorView.kt": [
+"pages",
+"dots"
+],
+"ui/home/DrawerController.kt": [
+"apps-screen",
+"animation"
+],
+"ui/home/BadgePainter.kt": [
+"badges",
+"notifications"
+],
+"ui/home/ViewMap.kt": [
+"drag",
+"coordinates"
+],
+"ui/widget/WidgetHost.kt": [
+"widgets",
+"glass",
+"touch"
+],
+"ui/widget/WidgetFrame.kt": [
+"widgets",
+"borders",
+"shape"
+],
+"ui/widget/WidgetSizes.kt": [
+"widgets",
+"sizes",
+"dark-mode"
+],
+"ui/widget/WidgetStackView.kt": [
+"widgets",
+"stacks",
+"slideshow",
+"glass"
+],
+"ui/widget/ResizeFrame.kt": [
+"widgets",
+"resize"
+],
+"ui/widget/WidgetCatalog.kt": [
+"widgets",
+"previews",
+"add-widget"
+],
+"ui/home/EditBackdropView.kt": ["edit-mode", "glass", "frosted", "animation"],
+"util/Motion.kt": [
+"animation"
+],
+"ui/design/WallpaperBackdrop.kt": [
+"glass",
+"frosted",
+"blur",
+"wallpaper",
+"transparency"
+],
+"ui/design/GlassShader.kt": [
+"glass",
+"shader",
+"blur"
+],
+"ui/design/Backdrop.kt": [
+"glass",
+"frosted",
+"blur",
+"haze",
+"compose"
+],
+"ui/design/DepthRing.kt": [
+"borders",
+"design-system",
+"compose"
+],
+"ui/design/DepthRingPainter.kt": [
+"borders",
+"design-system"
+],
+"data/HomeRepository.kt": [
+"storage",
+"layout",
+"folders",
+"widgets",
+"categories",
+"undo"
+],
+"data/LauncherDatabase.kt": [
+"storage",
+"database"
+],
+"data/SettingsStore.kt": [
+"settings",
+"storage"
+],
+"data/AppRepository.kt": [
+"apps",
+"icons",
+"storage"
+],
+"data/IconCache.kt": [
+"icons",
+"icon-pack",
+"shape"
+],
+"data/IconPack.kt": [
+"icons",
+"icon-pack"
+],
+"data/IconStyle.kt": [
+"icons",
+"shape"
+],
+"data/AppUsage.kt": [
+"categories",
+"usage",
+"storage"
+],
+"data/Backup.kt": [
+"backup",
+"storage"
+],
+"data/DefaultApps.kt": [
+"first-run",
+"dock"
+],
+"data/CategoryTitles.kt": [
+"categories"
+],
+"model/LayoutResolver.kt": [
+"layout",
+"grid",
+"tested"
+],
+"model/DropLogic.kt": [
+"drag",
+"grid",
+"folders",
+"stacks",
+"tested"
+],
+"model/GridOccupancy.kt": [
+"grid",
+"tested"
+],
+"model/AppCategories.kt": [
+"categories",
+"tested"
+],
+"model/CategoryOrder.kt": [
+"categories",
+"folders",
+"usage",
+"tested"
+],
+"model/AppSearch.kt": [
+"search",
+"apps-screen",
+"tested"
+],
+"model/AppFilter.kt": [
+"icon-pack",
+"tested"
+],
+"model/DefaultLayoutPlanner.kt": [
+"first-run",
+"dock",
+"tested"
+],
+"badges/Badges.kt": [
+"badges",
+"notifications"
+],
+"gesture/LauncherAccessibilityService.kt": [
+"gestures",
+"lock",
+"notifications"
+]
+};
+// Words people use for the same thing, for the search.
+const SYNONYMS = {
+  blur: ["glass", "frosted", "transparency"], frost: ["frosted"], liquid: ["glass"], haze: ["glass", "blur"],
+  drawer: ["apps-screen"], "app drawer": ["apps-screen"], launcher: ["home"], dock: ["hotseat", "dock"], hotseat: ["dock"],
+  db: ["database", "storage"], room: ["database"], save: ["storage", "backup"], prefs: ["settings"], datastore: ["settings", "storage"],
+  border: ["borders"], ring: ["borders"], onedepth: ["borders", "design-system"], button: ["buttons"], theme: ["colours", "design-system"],
+  color: ["colours"], colour: ["colours"], dark: ["dark-mode"], night: ["dark-mode"], font: ["typography"], text: ["typography"],
+  move: ["drag"], drop: ["drag"], reorder: ["drag"], swipe: ["gestures", "touch"], tap: ["touch", "gestures"], lock: ["gestures"],
+  notification: ["badges", "notifications"], badge: ["badges"], count: ["badges"],
+  icon: ["icons"], pack: ["icon-pack"], shape: ["shape", "icons"], category: ["categories"], sort: ["categories", "search"],
+  widget: ["widgets"], resize: ["resize", "widgets"], stack: ["stacks"], preview: ["previews"],
+  page: ["pages"], dots: ["pages"], grid: ["grid", "layout"], anim: ["animation"], animation: ["animation"], zoom: ["animation"],
+  wallpaper: ["wallpaper"], photo: ["photos", "wallpaper"], unlock: ["animation"], screen: [], backup: ["backup"], restore: ["backup"], test: ["tested"],
+};
+// Offline search: words in names (split at capitals), tags and descriptions; forgives typos,
+// understands related words (SYNONYMS), ranks the best match first. "#tag" keeps one tag.
+const fold = t => t.toLowerCase().normalize("NFD").replace(/\p{Mn}+/gu, "");
+const words = t => fold(t.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\.kt\b/g, "")).split(/[^a-z0-9-]+/).filter(Boolean);
+function near(a, b) {
+  // Levenshtein distance, stopping early above 2.
+  if (Math.abs(a.length - b.length) > 2) return 3;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    let best = i;
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      best = Math.min(best, cur[j]);
+    }
+    if (best > 2) return 3;
+    prev = cur;
+  }
+  return prev[b.length];
+}
+function quality(term, list) {
+  let q = 0;
+  for (const w of list) {
+    if (w === term) return 1;
+    if (w.startsWith(term)) q = Math.max(q, 0.85);
+    else if (term.length >= 3 && w.includes(term)) q = Math.max(q, 0.6);
+    else if (term.length >= 5) {
+      const d = near(term, w.slice(0, term.length + 2));
+      const dw = near(term, w);
+      const dist = Math.min(d, dw);
+      if (dist <= (term.length >= 7 ? 2 : 1)) q = Math.max(q, 0.5);
+    }
+  }
+  return q;
+}
+const INDEX = FILES.map(f => ({
+  file: f[0],
+  name: words(f[0].split("/").pop()).concat(words(f[0])),
+  tags: TAGS[f[0]] || [],
+  desc: words(f[3]),
+  layer: words(layerById[f[1]].name),
+}));
+function searchFiles(query) {
+  const raw = query.trim();
+  if (!raw) return [];
+  const tagOnly = raw.startsWith("#") ? raw.slice(1).toLowerCase() : null;
+  if (tagOnly) return INDEX.filter(x => x.tags.includes(tagOnly)).map(x => ({ file: x.file, score: 1, why: ["#" + tagOnly] }));
+  const STOP = new Set(["the", "a", "an", "of", "to", "for", "and", "in", "on", "with", "how", "where", "what", "is"]);
+  // Two-word names that mean one thing.
+  const PHRASES = { "lock screen": "lock", "home screen": "home", "apps screen": "apps-screen", "app drawer": "apps-screen",
+    "dark mode": "dark-mode", "light mode": "dark-mode", "icon pack": "icon-pack", "live wallpaper": "live-wallpaper",
+    "edit mode": "edit-mode", "first run": "first-run", "swipe up": "swipe-up", "add widget": "add-widget", "design system": "design-system" };
+  let text = fold(raw);
+  for (const [k, v] of Object.entries(PHRASES)) text = text.split(k).join(v);
+  const terms = words(text).filter(t => !STOP.has(t));
+  if (!terms.length) return [];
+  const out = [];
+  for (const x of INDEX) {
+    let total = 0;
+    const why = [];
+    let hit = 0;
+    for (const t of terms) {
+      const variants = [[t, 1]].concat((SYNONYMS[t] || []).map(v => [v, 0.75]));
+      let best = 0, reason = "";
+      for (const [v, k] of variants) {
+        const cand = [
+          [quality(v, x.name) * 5 * k, "name"],
+          [quality(v, x.tags) * 4 * k, "#" + (x.tags.find(tg => tg === v || tg.startsWith(v)) || v)],
+          [quality(v, x.desc) * 1.5 * k, "description"],
+          [quality(v, x.layer) * 1 * k, "layer"],
+        ];
+        for (const [sc, r] of cand) if (sc > best) { best = sc; reason = r; }
+      }
+      if (best === 0) continue;
+      hit++;
+      total += best;
+      if (!why.includes(reason)) why.push(reason);
+    }
+    // Every word found counts most; files matching at least half the words still show, lower.
+    if (hit === terms.length) out.push({ file: x.file, score: total * 1.5, why });
+    else if (hit >= Math.ceil(terms.length / 2)) out.push({ file: x.file, score: total, why });
+  }
+  return out.sort((a, b) => b.score - a.score);
+}
+const allTags = (() => {
+  const c = {};
+  Object.values(TAGS).forEach(ts => ts.forEach(t => { c[t] = (c[t] || 0) + 1; }));
+  return Object.entries(c).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+})();
+const esc = t => String(t).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+
+// Your picks and prompt suggestions, kept in this browser only, as JSON you can copy.
+const NOTES_KEY = "canyon-code-map-notes-v1";
+const notes = (() => {
+  try { const v = JSON.parse(localStorage.getItem(NOTES_KEY) || "null"); if (v && v.suggestions) return v; } catch (e) { /* storage off */ }
+  return { selected: [], suggestions: {} };
+})();
+const noteListeners = [];
+function saveNotes() {
+  try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch (e) { /* storage off: kept for this visit */ }
+  noteListeners.forEach(fn => fn());
+}
+function notesJson() {
+  const files = Object.keys(notes.suggestions).filter(f => notes.suggestions[f].length);
+  return JSON.stringify({
+    project: "Canyon UI",
+    picked: notes.selected,
+    suggestions: files.map(f => ({ file: f, prompts: notes.suggestions[f].map(s => s.text) })),
+  }, null, 2);
+}
+
+
+// Source: live from GitHub (through the viewer's GitHub connector on claude.ai, or straight from
+// raw.githubusercontent.com elsewhere, as on GitHub Pages), else the snapshot published with this page.
+const REPO = { owner: "JacoMartins", repo: "claude-launcher", ref: "dev", base: "app/src/main/java/io/github/jacomartins/canyonui/" };
+const SNAPSHOT = "47eccca";
+const GH_SERVER = "github";
+const ghUrl = f => `https://github.com/${REPO.owner}/${REPO.repo}/blob/${REPO.ref}/${REPO.base}${f}`;
+const mcpReady = (window.claude && window.claude.use) ? window.claude.use("mcp").catch(() => null) : Promise.resolve(null);
+const srcCache = {};
+let preferLive = true;
+let liveProblem = "";
+function liveText(result) {
+  const blocks = (result && result.content) || [];
+  const res = blocks.find(b => b && b.type === "resource" && b.resource && typeof b.resource.text === "string");
+  if (res) return res.resource.text;
+  const t = blocks.filter(b => b && b.type === "text" && typeof b.text === "string").map(b => b.text).find(x => /^\s*(package|import|@file)/.test(x));
+  return t || null;
+}
+function problemText(e) {
+  switch (e && e.code) {
+    case "needs_reauth": return "Reconnect GitHub in claude.ai Settings → Connectors to read live files.";
+    case "server_not_connected": return "Add the GitHub connector in claude.ai Settings → Connectors to read live files.";
+    case "not_in_manifest": case "approval_required": return "GitHub access was not allowed for this page.";
+    case "selection_required": return "Choose which GitHub connector to use when claude.ai asks.";
+    default: return "GitHub could not be read just now.";
+  }
+}
+async function loadSource(file, live = preferLive) {
+  const key = (live ? "live:" : "snap:") + file;
+  if (srcCache[key]) return srcCache[key];
+  if (live) {
+    const mcp = await mcpReady;
+    if (mcp) {
+      try {
+        const r = await mcp.callTool(GH_SERVER, "get_file_contents",
+          { owner: REPO.owner, repo: REPO.repo, path: REPO.base + file, ref: "refs/heads/" + REPO.ref },
+          { cache: { staleTime: 300000, gcTime: 900000 } });
+        const text = liveText(r);
+        if (text) { liveProblem = ""; return (srcCache[key] = { text, from: "live" }); }
+        liveProblem = "GitHub answered in a form this page does not read.";
+      } catch (e) { liveProblem = problemText(e); }
+    } else {
+      try {
+        const r = await fetch(`https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.ref}/${REPO.base}${file}`);
+        if (r.ok) { liveProblem = ""; return (srcCache[key] = { text: await r.text(), from: "live" }); }
+        liveProblem = "GitHub could not be read just now.";
+      } catch (e) { liveProblem = "Live GitHub files are not available in this view."; }
+    }
+  }
+  const res = await fetch("src/" + file + ".txt");
+  if (!res.ok) throw new Error("missing");
+  return (srcCache["snap:" + file] = { text: await res.text(), from: "snapshot" });
+}
+
+// Snippets: declarations with their doc comment, found in the source itself; the ones worth
+// reading first are starred.
+const INTEREST = {
+  "HomeActivity.kt": ["bind", "onDropped", "onCreate", "enterEditMode", "playUnlock", "badgeView"],
+  "ui/home/DragController.kt": ["begin", "update", "finish", "landsInView"],
+  "model/DropLogic.kt": ["decide", "push"],
+  "data/HomeRepository.kt": ["compute", "place", "edit", "arrangeCategoryFolders"],
+  "ui/design/WallpaperBackdrop.kt": ["setFromPhoto", "blur", "draw", "track"],
+  "ui/design/GlassShader.kt": ["SRC", "draw"],
+  "ui/design/Backdrop.kt": ["BackdropSource", "backdrop"],
+  "ui/home/FolderIconView.kt": ["onDraw", "drawStack", "cellRect"],
+  "model/CategoryOrder.kt": ["arrange"],
+  "ui/widget/WidgetFrame.kt": ["apply", "drawnCard", "cardPath"],
+  "ui/overlay/HomeOverlay.kt": ["HomeOverlay", "FolderPopup"],
+  "ui/drawer/AlphabetScrubber.kt": ["AlphabetScrubber"],
+  "data/Backup.kt": ["export", "restore"],
+  "badges/Badges.kt": ["publish"],
+};
+function snippetsOf(file, text) {
+  const lines = text.split("\n");
+  const out = [];
+  const decl = /^(\s{0,4})(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:private|internal|public|protected|override|open|abstract|data|sealed|enum|inline|suspend|operator|companion|const|lateinit)\s+)*(fun|class|object|interface|val|var)\s+(?:<[^>]+>\s*)?(?:[\w.]+\.)?(`?\w+`?)/;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(decl);
+    if (!m) continue;
+    const indent = m[1].length;
+    const kind = m[2], name = m[3].replace(/`/g, "");
+    // Doc comment just above (skipping annotations).
+    let j = i - 1;
+    while (j >= 0 && /^\s*@/.test(lines[j])) j--;
+    let doc = "", start = i;
+    if (j >= 0 && /\*\/\s*$/.test(lines[j])) {
+      let k = j;
+      while (k >= 0 && !/\/\*\*/.test(lines[k])) k--;
+      if (k >= 0) {
+        start = k;
+        doc = lines.slice(k, j + 1).join(" ").replace(/\/\*\*|\*\/|\s\*\s?/g, " ").replace(/\s+/g, " ").trim();
+        doc = doc.split(/(?<=\.)\s/)[0];
+      }
+    }
+    // Members without a doc comment only for functions and classes, to keep the list useful.
+    if (!doc && (kind === "val" || kind === "var")) continue;
+    if (indent > 4) continue;
+    // End: matching brace from the declaration line, else the declaration line alone.
+    let depth = 0, end = i, opened = false;
+    for (let k = i; k < Math.min(lines.length, i + 400); k++) {
+      for (const ch of lines[k].replace(/"(?:\\.|[^"\\])*"/g, "").replace(/\/\/.*$/, "")) {
+        if (ch === "{") { depth++; opened = true; } else if (ch === "}") depth--;
+      }
+      end = k;
+      if (opened && depth <= 0) break;
+      if (!opened && k > i && !/[(,=]\s*$/.test(lines[k - 1]) && !/^\s*[.)]/.test(lines[k])) { end = k - 1; break; }
+    }
+    out.push({ name, kind, line: i + 1, start: start + 1, end: Math.max(end + 1, i + 1), doc, star: (INTEREST[file] || []).includes(name) });
+  }
+  out.sort((a, b) => (b.star - a.star) || (a.line - b.line));
+  return out;
+}
+function snipList(file, snips, limit) {
+  const list = limit ? snips.slice(0, limit) : snips;
+  return list.map(sn => `<li><button type="button" data-open="${file}" data-start="${sn.start}" data-end="${sn.end}">
+      <span class="sym">${sn.star ? '<span class="star" aria-label="worth reading first">★</span> ' : ""}<span class="kind">${sn.kind}</span> ${esc(sn.name)} <span class="kind">· line ${sn.line}</span></span>
+      ${sn.doc ? `<span class="doc">${esc(sn.doc)}</span>` : ""}</button></li>`).join("");
+}
+
+// The source screen.
+const screen = document.getElementById("source-screen");
+const codeBox = document.getElementById("src-code");
+let current = null, lastFocus = null;
+async function openSource(file, start, end) {
+  lastFocus = document.activeElement;
+  screen.hidden = false;
+  document.body.style.overflow = "hidden";
+  document.getElementById("src-title").textContent = file;
+  document.getElementById("src-gh").href = ghUrl(file);
+  codeBox.innerHTML = `<p class="status">Loading ${esc(file)}…</p>`;
+  document.getElementById("src-snips").innerHTML = "";
+  document.getElementById("src-close").focus();
+  let src;
+  try { src = await loadSource(file); } catch (e) { codeBox.innerHTML = `<p class="status">This file could not be loaded.</p>`; return; }
+  current = { file, src };
+  const badge = document.getElementById("src-badge");
+  badge.textContent = src.from === "live" ? "Live · GitHub " + REPO.ref : "Snapshot · " + SNAPSHOT;
+  badge.className = "badge" + (src.from === "live" ? " live" : "");
+  badge.title = src.from === "live" ? "" : liveProblem;
+  document.getElementById("src-switch").textContent = src.from === "live" ? "Use snapshot" : "Try live GitHub";
+  const lines = src.text.replace(/\n$/, "").split("\n");
+  const html = window.hljs ? hljs.highlight(src.text, { language: "kotlin", ignoreIllegals: true }).value : esc(src.text);
+  codeBox.innerHTML = `<div class="lines"><div class="gutter" aria-hidden="true">${lines.map((_, i) => i + 1).join("\n")}</div><pre><code>${html}</code></pre></div>`;
+  const snips = snippetsOf(file, src.text);
+  document.getElementById("src-snips").innerHTML = snipList(file, snips) || `<li class="muted">No declarations found.</li>`;
+  if (start) mark(start, end || start);
+}
+function mark(start, end) {
+  const host = codeBox.querySelector(".lines"); if (!host) return;
+  host.querySelectorAll(".band").forEach(b => b.remove());
+  const lh = 20, top = 12;
+  const band = document.createElement("div");
+  band.className = "band";
+  band.style.top = (top + (start - 1) * lh) + "px";
+  band.style.height = ((end - start + 1) * lh) + "px";
+  host.appendChild(band);
+  codeBox.scrollTop = Math.max(0, top + (start - 1) * lh - 60);
+}
+function closeSource() {
+  screen.hidden = true;
+  document.body.style.overflow = "";
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+}
+document.getElementById("src-close").addEventListener("click", closeSource);
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !screen.hidden) closeSource(); });
+document.getElementById("src-snips").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-start]"); if (!b) return;
+  mark(+b.dataset.start, +b.dataset.end);
+});
+document.getElementById("src-switch").addEventListener("click", () => {
+  if (!current) return;
+  preferLive = current.src.from !== "live";
+  openSource(current.file);
+});
+document.getElementById("src-find").addEventListener("keydown", ev => {
+  if (ev.key !== "Enter" || !current) return;
+  const t = ev.target.value.trim().toLowerCase(); if (!t) return;
+  const lines = current.src.text.split("\n");
+  const from = (+(ev.target.dataset.at || 0)) % lines.length;
+  for (let n = 1; n <= lines.length; n++) {
+    const i = (from + n) % lines.length;
+    if (lines[i].toLowerCase().includes(t)) { ev.target.dataset.at = i; mark(i + 1, i + 1); return; }
+  }
+});
+// Anything with data-open opens the source screen (graph panel, file index).
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-open]"); if (!b || b.closest("#src-snips")) return;
+  ev.preventDefault();
+  openSource(b.dataset.open, b.dataset.start ? +b.dataset.start : 0, b.dataset.end ? +b.dataset.end : 0);
+});
+
+// Dependency graph: pan, zoom, hover preview, tap to select, search and layer filter.
+const EDGES = [["ui/home/EditBackdropView.kt", "ui/design/WallpaperBackdrop.kt"], ["ui/home/EditBackdropView.kt", "util/Motion.kt"], ["ui/home/HomeScreenLayout.kt", "ui/home/EditBackdropView.kt"], ["HomeActivity.kt", "HomeWidgets.kt"], ["HomeActivity.kt", "LauncherApp.kt"], ["HomeActivity.kt", "SettingsActivity.kt"], ["HomeActivity.kt", "WallpaperActivity.kt"], ["HomeActivity.kt", "badges/Badges.kt"], ["HomeActivity.kt", "data/AppRepository.kt"], ["HomeActivity.kt", "data/CategoryTitles.kt"], ["HomeActivity.kt", "data/HomeRepository.kt"], ["HomeActivity.kt", "data/IconCache.kt"], ["HomeActivity.kt", "data/IconPack.kt"], ["HomeActivity.kt", "data/IconStyle.kt"], ["HomeActivity.kt", "data/SettingsStore.kt"], ["HomeActivity.kt", "gesture/LauncherAccessibilityService.kt"], ["HomeActivity.kt", "model/AppCategories.kt"], ["HomeActivity.kt", "model/DropLogic.kt"], ["HomeActivity.kt", "model/GridOccupancy.kt"], ["HomeActivity.kt", "model/LayoutResolver.kt"], ["HomeActivity.kt", "ui/design/Backdrop.kt"], ["HomeActivity.kt", "ui/design/Menu.kt"], ["HomeActivity.kt", "ui/design/WallpaperBackdrop.kt"], ["HomeActivity.kt", "ui/drawer/AppDrawer.kt"], ["HomeActivity.kt", "ui/drawer/DrawerModel.kt"], ["HomeActivity.kt", "ui/home/AppIconView.kt"], ["HomeActivity.kt", "ui/home/CellLayout.kt"], ["HomeActivity.kt", "ui/home/DragController.kt"], ["HomeActivity.kt", "ui/home/DragLayer.kt"], ["HomeActivity.kt", "ui/home/DrawerController.kt"], ["HomeActivity.kt", "ui/home/FolderIconView.kt"], ["HomeActivity.kt", "ui/home/HomeScreenLayout.kt"], ["HomeActivity.kt", "ui/home/ViewMap.kt"], ["HomeActivity.kt", "ui/overlay/EditAppSheet.kt"], ["HomeActivity.kt", "ui/overlay/HomeOverlay.kt"], ["HomeActivity.kt", "ui/overlay/OverlayState.kt"], ["HomeActivity.kt", "ui/overlay/WidgetPicker.kt"], ["HomeActivity.kt", "ui/settings/AppTargetPicker.kt"], ["HomeActivity.kt", "ui/theme/Theme.kt"], ["HomeActivity.kt", "ui/widget/ResizeFrame.kt"], ["HomeActivity.kt", "ui/widget/WidgetCatalog.kt"], ["HomeActivity.kt", "ui/widget/WidgetFrame.kt"], ["HomeActivity.kt", "ui/widget/WidgetHost.kt"], ["HomeActivity.kt", "ui/widget/WidgetSizes.kt"], ["HomeActivity.kt", "ui/widget/WidgetStackView.kt"], ["HomeActivity.kt", "util/Motion.kt"], ["HomeWidgets.kt", "data/HomeRepository.kt"], ["HomeWidgets.kt", "model/DropLogic.kt"], ["HomeWidgets.kt", "model/LayoutResolver.kt"], ["HomeWidgets.kt", "ui/widget/WidgetHost.kt"], ["HomeWidgets.kt", "ui/widget/WidgetSizes.kt"], ["HomeWidgets.kt", "ui/widget/WidgetStackView.kt"], ["LauncherApp.kt", "data/AppRepository.kt"], ["LauncherApp.kt", "data/AppUsage.kt"], ["LauncherApp.kt", "data/CategoryTitles.kt"], ["LauncherApp.kt", "data/DefaultApps.kt"], ["LauncherApp.kt", "data/HomeRepository.kt"], ["LauncherApp.kt", "data/IconCache.kt"], ["LauncherApp.kt", "data/LauncherDatabase.kt"], ["LauncherApp.kt", "data/SettingsStore.kt"], ["LauncherApp.kt", "model/AppCategories.kt"], ["LauncherApp.kt", "ui/design/WallpaperBackdrop.kt"], ["SettingsActivity.kt", "LauncherApp.kt"], ["SettingsActivity.kt", "WallpaperActivity.kt"], ["SettingsActivity.kt", "badges/Badges.kt"], ["SettingsActivity.kt", "data/AppRepository.kt"], ["SettingsActivity.kt", "data/Backup.kt"], ["SettingsActivity.kt", "data/HomeRepository.kt"], ["SettingsActivity.kt", "data/IconStyle.kt"], ["SettingsActivity.kt", "data/SettingsStore.kt"], ["SettingsActivity.kt", "gesture/LauncherAccessibilityService.kt"], ["SettingsActivity.kt", "ui/design/Buttons.kt"], ["SettingsActivity.kt", "ui/design/DepthRing.kt"], ["SettingsActivity.kt", "ui/design/Section.kt"], ["SettingsActivity.kt", "ui/design/Tokens.kt"], ["SettingsActivity.kt", "ui/design/WallpaperBackdrop.kt"], ["SettingsActivity.kt", "ui/drawer/AppDrawer.kt"], ["SettingsActivity.kt", "ui/drawer/DrawerModel.kt"], ["SettingsActivity.kt", "ui/settings/AppTargetPicker.kt"], ["SettingsActivity.kt", "ui/settings/IconPackPicker.kt"], ["SettingsActivity.kt", "ui/theme/Theme.kt"], ["WallpaperActivity.kt", "HomeActivity.kt"], ["WallpaperActivity.kt", "LauncherApp.kt"], ["WallpaperActivity.kt", "ui/design/Buttons.kt"], ["WallpaperActivity.kt", "ui/design/Section.kt"], ["WallpaperActivity.kt", "ui/design/Tokens.kt"], ["WallpaperActivity.kt", "ui/design/WallpaperBackdrop.kt"], ["WallpaperActivity.kt", "ui/theme/Theme.kt"], ["data/AppRepository.kt", "data/IconCache.kt"], ["data/AppRepository.kt", "data/IconPack.kt"], ["data/AppRepository.kt", "data/IconStyle.kt"], ["data/AppRepository.kt", "model/AppCategories.kt"], ["data/AppRepository.kt", "model/AppSearch.kt"], ["data/AppRepository.kt", "model/LayoutResolver.kt"], ["data/AppUsage.kt", "model/CategoryOrder.kt"], ["data/AppUsage.kt", "model/LayoutResolver.kt"], ["data/Backup.kt", "HomeActivity.kt"], ["data/Backup.kt", "LauncherApp.kt"], ["data/CategoryTitles.kt", "model/AppCategories.kt"], ["data/DefaultApps.kt", "data/AppRepository.kt"], ["data/DefaultApps.kt", "model/LayoutResolver.kt"], ["data/HomeRepository.kt", "data/AppRepository.kt"], ["data/HomeRepository.kt", "data/AppUsage.kt"], ["data/HomeRepository.kt", "data/DefaultApps.kt"], ["data/HomeRepository.kt", "data/LauncherDatabase.kt"], ["data/HomeRepository.kt", "data/SettingsStore.kt"], ["data/HomeRepository.kt", "model/AppCategories.kt"], ["data/HomeRepository.kt", "model/CategoryOrder.kt"], ["data/HomeRepository.kt", "model/DefaultLayoutPlanner.kt"], ["data/HomeRepository.kt", "model/DropLogic.kt"], ["data/HomeRepository.kt", "model/GridOccupancy.kt"], ["data/HomeRepository.kt", "model/LayoutResolver.kt"], ["data/IconCache.kt", "data/IconPack.kt"], ["data/IconCache.kt", "data/IconStyle.kt"], ["data/IconCache.kt", "model/AppCategories.kt"], ["data/IconCache.kt", "model/LayoutResolver.kt"], ["data/IconPack.kt", "model/AppFilter.kt"], ["data/LauncherDatabase.kt", "data/SettingsStore.kt"], ["data/SettingsStore.kt", "data/IconStyle.kt"], ["model/DefaultLayoutPlanner.kt", "model/LayoutResolver.kt"], ["model/DropLogic.kt", "model/GridOccupancy.kt"], ["model/DropLogic.kt", "model/LayoutResolver.kt"], ["model/LayoutResolver.kt", "model/GridOccupancy.kt"], ["ui/design/Backdrop.kt", "data/SettingsStore.kt"], ["ui/design/Backdrop.kt", "ui/design/GlassShader.kt"], ["ui/design/Backdrop.kt", "ui/design/WallpaperBackdrop.kt"], ["ui/design/Buttons.kt", "ui/design/DepthRing.kt"], ["ui/design/Buttons.kt", "ui/design/Tokens.kt"], ["ui/design/ColorPicker.kt", "ui/design/DepthRing.kt"], ["ui/design/ColorPicker.kt", "ui/design/Tokens.kt"], ["ui/design/DepthRingPainter.kt", "ui/design/DepthRing.kt"], ["ui/design/Menu.kt", "ui/design/Backdrop.kt"], ["ui/design/Menu.kt", "ui/design/DepthRing.kt"], ["ui/design/Menu.kt", "ui/design/Tokens.kt"], ["ui/design/Section.kt", "ui/design/DepthRing.kt"], ["ui/design/Section.kt", "ui/design/Tokens.kt"], ["ui/design/WallpaperBackdrop.kt", "data/SettingsStore.kt"], ["ui/design/WallpaperBackdrop.kt", "ui/design/GlassShader.kt"], ["ui/drawer/AlphabetScrubber.kt", "data/AppRepository.kt"], ["ui/drawer/AlphabetScrubber.kt", "ui/home/DragLayer.kt"], ["ui/drawer/AppDrawer.kt", "data/AppRepository.kt"], ["ui/drawer/AppDrawer.kt", "data/SettingsStore.kt"], ["ui/drawer/AppDrawer.kt", "ui/design/Backdrop.kt"], ["ui/drawer/AppDrawer.kt", "ui/design/Buttons.kt"], ["ui/drawer/AppDrawer.kt", "ui/design/DepthRing.kt"], ["ui/drawer/AppDrawer.kt", "ui/design/Menu.kt"], ["ui/drawer/AppDrawer.kt", "ui/design/Tokens.kt"], ["ui/drawer/AppDrawer.kt", "ui/design/WallpaperBackdrop.kt"], ["ui/drawer/AppDrawer.kt", "ui/drawer/AlphabetScrubber.kt"], ["ui/drawer/AppDrawer.kt", "ui/drawer/DrawerModel.kt"], ["ui/drawer/AppDrawer.kt", "ui/home/AppIconView.kt"], ["ui/drawer/AppDrawer.kt", "ui/home/DragLayer.kt"], ["ui/drawer/DrawerModel.kt", "data/AppRepository.kt"], ["ui/drawer/DrawerModel.kt", "data/SettingsStore.kt"], ["ui/drawer/DrawerModel.kt", "model/AppSearch.kt"], ["ui/home/AppIconView.kt", "data/AppRepository.kt"], ["ui/home/AppIconView.kt", "ui/home/BadgePainter.kt"], ["ui/home/AppIconView.kt", "util/Motion.kt"], ["ui/home/CellLayout.kt", "ui/design/Backdrop.kt"], ["ui/home/CellLayout.kt", "ui/design/DepthRingPainter.kt"], ["ui/home/CellLayout.kt", "ui/design/WallpaperBackdrop.kt"], ["ui/home/DragController.kt", "data/AppRepository.kt"], ["ui/home/DragController.kt", "data/HomeRepository.kt"], ["ui/home/DragController.kt", "model/DropLogic.kt"], ["ui/home/DragController.kt", "model/GridOccupancy.kt"], ["ui/home/DragController.kt", "model/LayoutResolver.kt"], ["ui/home/DragController.kt", "ui/home/CellLayout.kt"], ["ui/home/DragController.kt", "ui/home/HomeScreenLayout.kt"], ["ui/home/DragController.kt", "ui/home/ViewMap.kt"], ["ui/home/DragController.kt", "util/Motion.kt"], ["ui/home/DragLayer.kt", "ui/home/DragController.kt"], ["ui/home/DragLayer.kt", "ui/home/DrawerController.kt"], ["ui/home/DrawerController.kt", "util/Motion.kt"], ["ui/home/FolderIconView.kt", "data/HomeRepository.kt"], ["ui/home/FolderIconView.kt", "data/IconStyle.kt"], ["ui/home/FolderIconView.kt", "ui/design/DepthRingPainter.kt"], ["ui/home/FolderIconView.kt", "ui/design/WallpaperBackdrop.kt"], ["ui/home/FolderIconView.kt", "ui/home/AppIconView.kt"], ["ui/home/FolderIconView.kt", "ui/home/BadgePainter.kt"], ["ui/home/FolderIconView.kt", "util/Motion.kt"], ["ui/home/HomeScreenLayout.kt", "ui/design/Backdrop.kt"], ["ui/home/HomeScreenLayout.kt", "ui/home/CellLayout.kt"], ["ui/home/HomeScreenLayout.kt", "ui/home/PageIndicatorView.kt"], ["ui/home/HomeScreenLayout.kt", "ui/home/Workspace.kt"], ["ui/home/Workspace.kt", "ui/home/CellLayout.kt"], ["ui/home/Workspace.kt", "util/Motion.kt"], ["ui/overlay/EditAppSheet.kt", "data/AppRepository.kt"], ["ui/overlay/EditAppSheet.kt", "data/CategoryTitles.kt"], ["ui/overlay/EditAppSheet.kt", "data/IconCache.kt"], ["ui/overlay/EditAppSheet.kt", "data/IconPack.kt"], ["ui/overlay/EditAppSheet.kt", "data/IconStyle.kt"], ["ui/overlay/EditAppSheet.kt", "model/AppCategories.kt"], ["ui/overlay/EditAppSheet.kt", "ui/design/Buttons.kt"], ["ui/overlay/EditAppSheet.kt", "ui/design/DepthRing.kt"], ["ui/overlay/EditAppSheet.kt", "ui/design/Section.kt"], ["ui/overlay/EditAppSheet.kt", "ui/design/Tokens.kt"], ["ui/overlay/EditAppSheet.kt", "ui/overlay/OverlayState.kt"], ["ui/overlay/HomeOverlay.kt", "data/HomeRepository.kt"], ["ui/overlay/HomeOverlay.kt", "ui/design/Backdrop.kt"], ["ui/overlay/HomeOverlay.kt", "ui/design/Buttons.kt"], ["ui/overlay/HomeOverlay.kt", "ui/design/ColorPicker.kt"], ["ui/overlay/HomeOverlay.kt", "ui/design/DepthRing.kt"], ["ui/overlay/HomeOverlay.kt", "ui/design/Menu.kt"], ["ui/overlay/HomeOverlay.kt", "ui/design/Tokens.kt"], ["ui/overlay/HomeOverlay.kt", "ui/home/AppIconView.kt"], ["ui/overlay/HomeOverlay.kt", "ui/overlay/EditAppSheet.kt"], ["ui/overlay/HomeOverlay.kt", "ui/overlay/OverlayState.kt"], ["ui/overlay/HomeOverlay.kt", "ui/overlay/WidgetPicker.kt"], ["ui/overlay/OverlayState.kt", "data/AppRepository.kt"], ["ui/overlay/OverlayState.kt", "data/HomeRepository.kt"], ["ui/overlay/OverlayState.kt", "data/IconStyle.kt"], ["ui/overlay/OverlayState.kt", "ui/design/Menu.kt"], ["ui/overlay/OverlayState.kt", "ui/overlay/EditAppSheet.kt"], ["ui/overlay/OverlayState.kt", "ui/overlay/WidgetPicker.kt"], ["ui/overlay/OverlayState.kt", "ui/widget/WidgetCatalog.kt"], ["ui/overlay/WidgetPicker.kt", "ui/design/DepthRing.kt"], ["ui/overlay/WidgetPicker.kt", "ui/design/Tokens.kt"], ["ui/overlay/WidgetPicker.kt", "ui/overlay/OverlayState.kt"], ["ui/overlay/WidgetPicker.kt", "ui/widget/WidgetCatalog.kt"], ["ui/settings/AppTargetPicker.kt", "data/AppRepository.kt"], ["ui/settings/AppTargetPicker.kt", "ui/design/Buttons.kt"], ["ui/settings/AppTargetPicker.kt", "ui/design/DepthRing.kt"], ["ui/settings/AppTargetPicker.kt", "ui/design/Section.kt"], ["ui/settings/IconPackPicker.kt", "data/AppRepository.kt"], ["ui/settings/IconPackPicker.kt", "data/IconPack.kt"], ["ui/settings/IconPackPicker.kt", "ui/design/Buttons.kt"], ["ui/theme/Theme.kt", "ui/design/Tokens.kt"], ["ui/widget/ResizeFrame.kt", "model/GridOccupancy.kt"], ["ui/widget/ResizeFrame.kt", "ui/home/CellLayout.kt"], ["ui/widget/ResizeFrame.kt", "ui/home/ViewMap.kt"], ["ui/widget/ResizeFrame.kt", "ui/widget/WidgetSizes.kt"], ["ui/widget/WidgetCatalog.kt", "data/AppRepository.kt"], ["ui/widget/WidgetCatalog.kt", "ui/widget/WidgetSizes.kt"], ["ui/widget/WidgetFrame.kt", "ui/design/DepthRingPainter.kt"], ["ui/widget/WidgetFrame.kt", "ui/widget/WidgetHost.kt"], ["ui/widget/WidgetHost.kt", "ui/design/WallpaperBackdrop.kt"], ["ui/widget/WidgetHost.kt", "ui/widget/WidgetFrame.kt"], ["ui/widget/WidgetStackView.kt", "ui/design/WallpaperBackdrop.kt"], ["ui/widget/WidgetStackView.kt", "ui/widget/WidgetFrame.kt"], ["ui/widget/WidgetStackView.kt", "util/Motion.kt"]];
+(function () {
+  const svg = document.getElementById("graph");
+  const NS = "http://www.w3.org/2000/svg";
+  const W = 1320, ROW = 118, TOP = 34, H = TOP + LAYERS.length * ROW;
+  const pos = {};
+  const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || svg).appendChild(e); return e; };
+  const world = el("g", {});
+  LAYERS.forEach((l, i) => {
+    const y = TOP + i * ROW;
+    el("rect", { x: 0, y: y - 30, width: W, height: ROW, style: `fill:${l.color}`, class: "band" }, world);
+    el("text", { x: 14, y: y - 12, class: "band-label" }, world).textContent = l.name;
+    const row = FILES.filter(f => f[1] === l.id);
+    const left = 150, span = W - left - 40;
+    row.forEach((f, j) => {
+      const x = left + (row.length === 1 ? span / 2 : (span * j) / (row.length - 1));
+      // Labels alternate above and below so neighbours do not overlap.
+      pos[f[0]] = { x, y: y + 30, up: j % 2 === 0 };
+    });
+  });
+  const edgeLayer = el("g", {}, world);
+  const edgeEls = EDGES.filter(e => pos[e[0]] && pos[e[1]]).map(([a, b]) => {
+    const p = pos[a], q = pos[b];
+    const my = (p.y + q.y) / 2;
+    const d = p.y === q.y
+      ? `M${p.x},${p.y} Q${(p.x + q.x) / 2},${p.y - 46} ${q.x},${q.y}`
+      : `M${p.x},${p.y} C${p.x},${my} ${q.x},${my} ${q.x},${q.y}`;
+    return { a, b, path: el("path", { d, class: "edge" }, edgeLayer) };
+  });
+  const short = n => { const b = n.split("/").pop().replace(".kt", ""); return b.length > 18 ? b.slice(0, 17) + "…" : b; };
+  const nodeEls = {};
+  let moved = false;
+  FILES.forEach(f => {
+    const p = pos[f[0]]; if (!p) return;
+    const g = el("g", { class: "node", tabindex: "0", role: "button", "aria-label": f[0] }, world);
+    const r = 5 + Math.min(7, Math.sqrt(f[2]) / 6);
+    el("circle", { cx: p.x, cy: p.y, r, style: `fill:${layerById[f[1]].color}` }, g);
+    el("text", { x: p.x, y: p.up ? p.y - r - 6 : p.y + r + 13 }, g).textContent = short(f[0]);
+    el("title", {}, g).textContent = `${f[0]} · ${f[2]} lines`;
+    g.addEventListener("click", ev => { ev.stopPropagation(); if (!moved) select(f[0]); });
+    g.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(f[0]); } });
+    g.addEventListener("pointerenter", ev => { if (ev.pointerType === "mouse" && !selected) highlight(f[0], false); });
+    g.addEventListener("pointerleave", ev => { if (ev.pointerType === "mouse" && !selected) highlight(null); });
+    nodeEls[f[0]] = g;
+  });
+
+  // View: a viewBox that panning and zooming move.
+  let vb = { x: 0, y: 0, w: W, h: H };
+  const apply = () => svg.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  function fit() {
+    const r = svg.getBoundingClientRect();
+    const aspect = r.width / Math.max(r.height, 1);
+    // Whole graph in view, centred; on a narrow screen show the left part at a readable size.
+    let w = Math.max(W, H * aspect), h = w / aspect;
+    if (r.width < 700) { w = Math.min(W, 640); h = w / aspect; }
+    vb = { x: r.width >= 700 ? (W - w) / 2 : 0, y: (H - h) / 2, w, h };
+    apply();
+  }
+  function zoom(factor, cx, cy) {
+    const r = svg.getBoundingClientRect();
+    const px = cx === undefined ? 0.5 : (cx - r.left) / r.width;
+    const py = cy === undefined ? 0.5 : (cy - r.top) / r.height;
+    const nw = Math.min(W * 3, Math.max(180, vb.w / factor));
+    const nh = nw * (vb.h / vb.w);
+    vb = { x: vb.x + (vb.w - nw) * px, y: vb.y + (vb.h - nh) * py, w: nw, h: nh };
+    apply();
+  }
+  function centerOn(name) {
+    const p = pos[name]; if (!p) return;
+    vb = { ...vb, x: p.x - vb.w / 2, y: p.y - vb.h / 2 };
+    apply();
+  }
+  fit();
+  window.addEventListener("resize", fit);
+  document.getElementById("zoom-in").addEventListener("click", () => zoom(1.35));
+  document.getElementById("zoom-out").addEventListener("click", () => zoom(1 / 1.35));
+  document.getElementById("zoom-fit").addEventListener("click", fit);
+  svg.addEventListener("wheel", ev => { ev.preventDefault(); zoom(ev.deltaY < 0 ? 1.15 : 1 / 1.15, ev.clientX, ev.clientY); }, { passive: false });
+
+  // Drag to pan; two fingers to pinch.
+  const pointers = new Map();
+  let last = null, pinch = null, downAt = null;
+  svg.addEventListener("pointerdown", ev => {
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    moved = false;
+    downAt = { x: ev.clientX, y: ev.clientY };
+    last = { x: ev.clientX, y: ev.clientY };
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      pinch = Math.hypot(a.x - b.x, a.y - b.y);
+    }
+  });
+  svg.addEventListener("pointermove", ev => {
+    if (!pointers.has(ev.pointerId)) return;
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (pointers.size === 2 && pinch) {
+      const [a, b] = [...pointers.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      zoom(d / pinch, (a.x + b.x) / 2, (a.y + b.y) / 2);
+      pinch = d;
+      moved = true;
+      return;
+    }
+    if (!moved && Math.hypot(ev.clientX - downAt.x, ev.clientY - downAt.y) > 5) {
+      moved = true;
+      // Captured only once it is a drag, so a plain tap still reaches the file under it.
+      try { svg.setPointerCapture(ev.pointerId); } catch (e) { /* already released */ }
+    }
+    if (!moved) return;
+    svg.classList.add("panning");
+    const r = svg.getBoundingClientRect();
+    vb.x -= (ev.clientX - last.x) * (vb.w / r.width);
+    vb.y -= (ev.clientY - last.y) * (vb.h / r.height);
+    last = { x: ev.clientX, y: ev.clientY };
+    apply();
+  });
+  const end = ev => {
+    pointers.delete(ev.pointerId);
+    if (pointers.size < 2) pinch = null;
+    svg.classList.remove("panning");
+    if (pointers.size === 1) { const p = [...pointers.values()][0]; last = { ...p }; downAt = { ...p }; }
+  };
+  svg.addEventListener("pointerup", end);
+  svg.addEventListener("pointercancel", end);
+  svg.addEventListener("click", () => { if (!moved) select(null); });
+
+  // Highlighting.
+  const info = document.getElementById("graph-info");
+  const initial = info.innerHTML;
+  let selected = null;
+  let layerOnly = "";
+  let matches = new Set();
+  function paint(name) {
+    const uses = new Set(), usedBy = new Set();
+    edgeEls.forEach(e => {
+      let c = "edge";
+      const hidden = layerOnly && layerById[FILES.find(f => f[0] === e.a)[1]].id !== layerOnly && layerById[FILES.find(f => f[0] === e.b)[1]].id !== layerOnly;
+      if (name) {
+        if (e.a === name) { c = "edge out"; uses.add(e.b); }
+        else if (e.b === name) { c = "edge in"; usedBy.add(e.a); }
+        else c = "edge dim";
+      } else if (hidden || matches.size) c = "edge dim";
+      e.path.setAttribute("class", c);
+    });
+    if (name) edgeEls.filter(e => e.a === name || e.b === name).forEach(e => edgeLayer.appendChild(e.path));
+    Object.entries(nodeEls).forEach(([n, g]) => {
+      const f = FILES.find(x => x[0] === n);
+      let c = "node";
+      if (name) c = n === name ? "node sel" : (uses.has(n) || usedBy.has(n)) ? "node" : "node dim";
+      else if (matches.size) c = matches.has(n) ? "node match" : "node dim";
+      else if (layerOnly && f[1] !== layerOnly) c = "node dim";
+      if ((notes.suggestions[n] || []).length || notes.selected.includes(n)) c += " noted";
+      g.setAttribute("class", c);
+    });
+    return { uses, usedBy };
+  }
+  function highlight(name) { paint(name); }
+  function select(name) {
+    selected = name;
+    const { uses, usedBy } = paint(name);
+    if (!name) { info.innerHTML = initial; return; }
+    const f = FILES.find(x => x[0] === name);
+    const list = set => set.size ? `<ul>${[...set].sort().map(n => `<li><a href="#" data-file="${n}"><code>${n}</code></a></li>`).join("")}</ul>` : `<p class="muted">None</p>`;
+    const picked = notes.selected.includes(name);
+    const sugg = notes.suggestions[name] || [];
+    info.innerHTML = `<div><h3><code>${name}</code></h3><p class="muted">${layerById[f[1]].name} · ${f[2].toLocaleString()} lines</p><p>${f[3]}</p>
+      <div class="tagbar" style="margin-top:8px">${(TAGS[name] || []).map(t => `<button type="button" class="tag" data-tag="${t}">#${t}</button>`).join("")}</div></div>
+      <div class="row"><button type="button" class="src-btn" data-open="${name}">View source</button><a href="${ghUrl(name)}" target="_blank" rel="noopener">GitHub ↗</a></div>
+      <div><span class="eyebrow">Snippets</span><ul class="snips" id="node-snips"><li class="muted">Loading the file…</li></ul></div>
+      <div class="cols"><div><span class="key out">uses ${uses.size}</span>${list(uses)}</div><div><span class="key in">used by ${usedBy.size}</span>${list(usedBy)}</div></div>
+      <div class="notes-box">
+        <div class="row"><button type="button" class="btn ${picked ? "" : "primary"}" data-act="pick">${picked ? "Remove from picks" : "Pick this file"}</button>
+          <span class="muted">${sugg.length} suggestion${sugg.length === 1 ? "" : "s"}</span></div>
+        ${sugg.length ? `<ul class="sugg">${sugg.map(sg => `<li><span>${esc(sg.text)}</span><button type="button" class="btn" data-act="del" data-id="${sg.id}" aria-label="Delete suggestion">Delete</button></li>`).join("")}</ul>` : ""}
+        <label for="sugg-text" class="muted">Add a prompt suggestion for this file</label>
+        <textarea id="sugg-text" placeholder="e.g. Make the folder panel open from the icon with a spring"></textarea>
+        <button type="button" class="btn primary" data-act="add">Add suggestion</button>
+      </div>`;
+    // The file's snippets, once it is loaded (from GitHub or the snapshot).
+    loadSource(name).then(src => {
+      const box = document.getElementById("node-snips");
+      if (!box || selected !== name) return;
+      const sn = snippetsOf(name, src.text);
+      box.innerHTML = (snipList(name, sn, 8) || `<li class="muted">No declarations found.</li>`) +
+        (sn.length > 8 ? `<li><button type="button" data-open="${name}"><span class="sym">All ${sn.length} snippets →</span></button></li>` : "");
+    }).catch(() => { const box = document.getElementById("node-snips"); if (box) box.innerHTML = `<li class="muted">The file could not be loaded.</li>`; });
+  }
+  // Picks and suggestions from the panel.
+  info.addEventListener("click", ev => {
+    const b = ev.target.closest("[data-act]"); if (!b || !selected) return;
+    const name = selected;
+    if (b.dataset.act === "pick") {
+      notes.selected = notes.selected.includes(name) ? notes.selected.filter(x => x !== name) : notes.selected.concat(name);
+    } else if (b.dataset.act === "add") {
+      const t = document.getElementById("sugg-text").value.trim();
+      if (!t) return;
+      (notes.suggestions[name] = notes.suggestions[name] || []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text: t, at: new Date().toISOString() });
+    } else if (b.dataset.act === "del") {
+      notes.suggestions[name] = (notes.suggestions[name] || []).filter(x => x.id !== b.dataset.id);
+      if (!notes.suggestions[name].length) delete notes.suggestions[name];
+    }
+    saveNotes();
+    select(name);
+  });
+  info.addEventListener("click", ev => {
+    const t = ev.target.closest("[data-tag]"); if (!t) return;
+    q.value = "#" + t.dataset.tag;
+    q.dispatchEvent(new Event("input"));
+  });
+  noteListeners.push(() => { if (!selected) paint(null); });
+  // Names in the panel jump to that file in the graph.
+  info.addEventListener("click", ev => {
+    const a = ev.target.closest("a[data-file]"); if (!a) return;
+    ev.preventDefault();
+    select(a.dataset.file);
+    centerOn(a.dataset.file);
+  });
+
+  // Search and layer filter.
+  const q = document.getElementById("graph-q");
+  const names = document.getElementById("graph-names");
+  names.innerHTML = FILES.map(f => `<option value="${f[0]}"></option>`).join("");
+  let ranked = [];
+  const tagbar = document.getElementById("graph-tags");
+  tagbar.innerHTML = allTags.map(([t, n]) => `<button type="button" class="tag" data-tag="${t}" aria-pressed="false">#${t} <small>${n}</small></button>`).join("");
+  tagbar.addEventListener("click", ev => {
+    const b = ev.target.closest("[data-tag]"); if (!b) return;
+    q.value = q.value.trim() === "#" + b.dataset.tag ? "" : "#" + b.dataset.tag;
+    q.dispatchEvent(new Event("input"));
+  });
+  q.addEventListener("input", () => {
+    const t = q.value.trim();
+    selected = null;
+    tagbar.querySelectorAll(".tag").forEach(b => b.setAttribute("aria-pressed", t === "#" + b.dataset.tag ? "true" : "false"));
+    const exact = FILES.find(f => f[0].toLowerCase() === t.toLowerCase());
+    if (exact) { select(exact[0]); centerOn(exact[0]); matches = new Set(); return; }
+    ranked = searchFiles(t);
+    matches = new Set(ranked.map(r => r.file));
+    if (!t) { info.innerHTML = initial; paint(null); return; }
+    const top = ranked[0]?.score || 1;
+    info.innerHTML = ranked.length
+      ? `<p>${ranked.length} file${ranked.length === 1 ? "" : "s"} for “${esc(t)}”, best first. Enter opens the first.</p>
+         <ul class="results">${ranked.slice(0, 10).map(r => `<li><a href="#" data-file="${r.file}"><code>${r.file}</code></a><span class="why">${r.why.join(" · ")} · ${Math.round((r.score / top) * 100)}%</span></li>`).join("")}</ul>`
+      : `<p>Nothing for “${esc(t)}”. Try another word or a tag below the search.</p>`;
+    paint(null);
+  });
+  q.addEventListener("keydown", ev => {
+    if (ev.key !== "Enter") return;
+    const first = ranked[0]?.file;
+    if (first) { matches = new Set(); select(first); centerOn(first); }
+  });
+  const ls = document.getElementById("graph-layer");
+  LAYERS.forEach(l => { const o = document.createElement("option"); o.value = l.id; o.textContent = l.name; ls.appendChild(o); });
+  ls.addEventListener("change", () => { layerOnly = ls.value; if (!selected) paint(null); });
+})();
+
+// Index
+const sel = document.getElementById("layer-filter");
+LAYERS.forEach(l => { const o = document.createElement("option"); o.value = l.id; o.textContent = l.name; sel.appendChild(o); });
+const rows = document.getElementById("rows");
+const q = document.getElementById("q");
+const count = document.getElementById("count");
+function render() {
+  const term = q.value.trim();
+  const layer = sel.value;
+  const order = term ? searchFiles(term).map(r => r.file) : FILES.map(f => f[0]);
+  const list = order.map(n => FILES.find(f => f[0] === n)).filter(f => !layer || f[1] === layer);
+  rows.innerHTML = list.map(f => {
+    const l = layerById[f[1]];
+    return `<tr><td class="f"><a href="#" data-open="${f[0]}"><code>${f[0]}</code></a></td><td><span class="layer-dot" style="background:${l.color}"></span>${l.name}</td><td class="n">${f[2].toLocaleString()}</td><td>${f[3]}</td><td><div class="tagbar">${(TAGS[f[0]] || []).map(t => `<button type="button" class="tag" data-tag="${t}">#${t}</button>`).join("")}</div></td></tr>`;
+  }).join("");
+  count.textContent = `${list.length} of ${FILES.length} files`;
+}
+q.addEventListener("input", render);
+sel.addEventListener("change", render);
+rows.addEventListener("click", ev => {
+  const t = ev.target.closest("[data-tag]"); if (!t) return;
+  q.value = "#" + t.dataset.tag;
+  render();
+});
+render();
+
+// Notes JSON panel.
+const jsonEl = document.getElementById("notes-json");
+const status = document.getElementById("json-status");
+let clearArmed = false;
+function showJson() { jsonEl.textContent = notesJson(); }
+noteListeners.push(showJson);
+showJson();
+document.getElementById("copy-json").addEventListener("click", () => {
+  const text = notesJson();
+  const done = () => { status.textContent = "Copied"; };
+  const fallback = () => {
+    const r = document.createRange(); r.selectNodeContents(jsonEl);
+    const sl = window.getSelection(); sl.removeAllRanges(); sl.addRange(r);
+    status.textContent = "Selected: copy it with your keyboard or menu";
+  };
+  try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+});
+document.getElementById("clear-json").addEventListener("click", ev => {
+  // Asks once on the page itself: a second tap within a few seconds clears.
+  if (!clearArmed) {
+    clearArmed = true;
+    ev.currentTarget.textContent = "Tap again to clear everything";
+    setTimeout(() => { clearArmed = false; document.getElementById("clear-json").textContent = "Clear all"; }, 4000);
+    return;
+  }
+  clearArmed = false;
+  ev.currentTarget.textContent = "Clear all";
+  notes.selected = [];
+  notes.suggestions = {};
+  saveNotes();
+  status.textContent = "Cleared";
+});
+
+// Glossary and reading order
+document.getElementById("gloss").innerHTML = GLOSSARY.map(g => `<dt>${g[0]}</dt><dd>${g[1]}</dd>`).join("");
+document.getElementById("reading").innerHTML = READING.map(r => `<li><div><div>${r[0]}</div><div class="where">${r[1]}</div></div></li>`).join("");
+</script>
+<script type="module">
+// Draws the walk-through diagrams, unless the host already did.
+if (document.querySelector("pre.mermaid:not([data-processed])")) {
+  const { default: mermaid } = await import("https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs");
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "neutral", fontFamily: "inherit" });
+  await mermaid.run({ querySelector: "pre.mermaid" });
+}
+</script>
+</body>
+</html>
